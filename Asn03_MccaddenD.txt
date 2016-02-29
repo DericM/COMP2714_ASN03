@@ -8,10 +8,11 @@ SQL> --  Mccadden, Deric    A00751277
 SQL> --  email: dmccadden@my.bcit.ca
 SQL> --
 SQL> -- ---------------------------------------------------------
-SQL> --  START C:\Users\Deric\workspace\COMP2714_ASN03\Asn03_MccaddenD.sql
-SQL> --
-SQL> --  build database
+SQL> --  BUILD DATABASE
 SQL> --  START C:\Users\Deric\workspace\COMP2714_ASN03\Asn3SetupHotels.sql
+SQL> --
+SQL> --  ASSIGNMENT
+SQL> --  START C:\Users\Deric\workspace\COMP2714_ASN03\Asn03_MccaddenD.sql
 SQL> -- ---------------------------------------------------------
 SQL> --
 SQL> ALTER SESSION SET NLS_DATE_FORMAT='YYYY-MM-DD';
@@ -24,7 +25,7 @@ SQL> SELECT SYSDATE
 
 SYSDATE                                                                         
 ----------                                                                      
-2016-02-04                                                                      
+2016-02-22                                                                      
 
 SQL> --
 SQL> --Q1--------------------------------------------------------
@@ -33,49 +34,54 @@ SQL> --A)------
 SQL> --using join?
 SQL> SELECT AVG(r.price) Average
   2  FROM Room r
-  3  INNER JOIN Hotel h
-  4    ON r.hotelNo = h.hotelNo
+  3    INNER JOIN Hotel h ON h.hotelNo = r.hotelNo
+  4  WHERE h.hotelAddress LIKE'%London%'
   5  ;
 
    AVERAGE                                                                      
 ----------                                                                      
-94.5206612                                                                      
+        55                                                                      
 
 SQL> --A)------
 SQL> --using IN?
-SQL> SELECT AVG(r.price) Average
-  2  FROM Room r, Hotel h
-  3  WHERE r.hotelNo IN h.hotelNo
-  4  ;
+SQL> SELECT AVG(price) Average
+  2  FROM Room
+  3  WHERE hotelNo IN (
+  4    SELECT hotelNo
+  5    FROM Hotel
+  6    WHERE hotelAddress LIKE'%London%'
+  7  )
+  8  ;
 
    AVERAGE                                                                      
 ----------                                                                      
-94.5206612                                                                      
+        55                                                                      
 
 SQL> --
 SQL> --Q2--------------------------------------------------------
 SQL> --How many different guests have made bookings in 2016-02?
 SQL> --for each hotel, hotel name order.
-SQL> SELECT DISTINCT h.hotelName,
-  2  	    COUNT(g.guestName) Distinct_Guests
-  3  FROM Booking b
-  4  NATURAL JOIN Guest g
-  5  NATURAL JOIN Hotel h
-  6  WHERE b.dateFrom >= DATE '2016-02-01'
-  7  GROUP BY h.hotelName
+SQL> SELECT h.hotelName, COUNT(DISTINCT b.guestNo) Distinct_Guests
+  2  FROM Booking b
+  3    JOIN Hotel h ON h.hotelNo = b.hotelNo
+  4  WHERE (dateTo IS NULL OR dateTo >= DATE'2016-02-01')
+  5    AND dateFrom < DATE'2016-03-01'
+  6  GROUP BY h.hotelName
+  7  ORDER BY h.hotelName
   8  ;
 
 HOTELNAME        DISTINCT_GUESTS                                                
 ---------------- ---------------                                                
-Grosvenor Inn                  2                                                
+Delta Inn                      2                                                
+Grosvenor Hotel                5                                                
+Grosvenor Inn                  3                                                
 Holiday Inn                    1                                                
 Imperial Palace                2                                                
-Park Royal Hotel               2                                                
-Delta Inn                      2                                                
-Grosvenor Hotel                4                                                
-The Ramada                     2                                                
+Meridian Hotel                 1                                                
+Park Royal Hotel               1                                                
+The Ramada                     1                                                
 
-7 rows selected.
+8 rows selected.
 
 SQL> --
 SQL> --Q3--------------------------------------------------------
@@ -83,70 +89,68 @@ SQL> --List the details of all rooms at the Grosvenor Hotel,
 SQL> --including the name of the guest staying in the room.
 SQL> --List in hotelNo, roomNo roder
 SQL> SELECT h.hotelName,
-  2  	    h.hotelNo,
-  3  	    r.roomNo,
-  4  	    r.type,
-  5  	    r.price,
-  6  	    g.guestname AS Booked_By
-  7  FROM Room r
-  8  INNER JOIN (
-  9    SELECT *
- 10    FROM Hotel
- 11    WHERE hotelName LIKE '%Grosvenor%'
- 12  ) h
- 13  	 ON r.hotelNo = h.hotelNo
- 14  LEFT JOIN (
- 15    SELECT *
- 16    FROM Booking
- 17    WHERE DATE '2016-02-01' BETWEEN dateFrom AND DateTo
- 18  ) b
- 19  	 ON h.hotelNo = b.hotelNo AND r.roomNo = b.roomNo
- 20  LEFT JOIN Guest g
- 21  	 ON b.guestNo = g.guestNo
- 22  ORDER BY r.hotelNo, r.roomNo
- 23  ;
+  2  	    r.roomNo,
+  3  	    r.type,
+  4  	    r.price,
+  5  	    g.guestname AS Booked_By
+  6  FROM Room r
+  7    INNER JOIN (
+  8  	 SELECT *
+  9  	 FROM Hotel
+ 10  	 WHERE hotelName LIKE '%Grosvenor%'
+ 11    ) h ON r.hotelNo = h.hotelNo
+ 12    LEFT JOIN (
+ 13  	 SELECT *
+ 14  	 FROM Booking
+ 15  	 WHERE dateFrom <= DATE'2016-02-01'
+ 16  	   AND (dateTo IS NULL OR dateTo >= DATE'2016-02-01')
+ 17    ) b
+ 18  	 ON h.hotelNo = b.hotelNo AND r.roomNo = b.roomNo
+ 19    LEFT JOIN Guest g ON b.guestNo = g.guestNo
+ 20  ORDER BY r.hotelNo, r.roomNo
+ 21  ;
 
-HOTELNAME           HOTELNO     ROOMNO TYPE          PRICE BOOKED_BY            
----------------- ---------- ---------- -------- ---------- ---------------      
-Grosvenor Hotel           1          1 Single           40                      
-Grosvenor Hotel           1          2 Single           40                      
-Grosvenor Hotel           1          3 Single           40 Ivan Pratt           
-Grosvenor Hotel           1          4 Single           40 Sundeep Mohan        
-Grosvenor Hotel           1          5 Double           55 Peter Kennedy        
-Grosvenor Hotel           1          6 Double           55                      
-Grosvenor Hotel           1          7 Double           55                      
-Grosvenor Hotel           1          8 Double           55                      
-Grosvenor Hotel           1          9 Family           85                      
-Grosvenor Hotel           1         10 Family           90                      
-Grosvenor Hotel           1         11 Deluxe          110                      
+HOTELNAME            ROOMNO TYPE          PRICE BOOKED_BY                       
+---------------- ---------- -------- ---------- ---------------                 
+Grosvenor Hotel           1 Single           40                                 
+Grosvenor Hotel           2 Single           40                                 
+Grosvenor Hotel           3 Single           40 Ivan Pratt                      
+Grosvenor Hotel           4 Single           40 Sundeep Mohan                   
+Grosvenor Hotel           5 Double           55 Peter Kennedy                   
+Grosvenor Hotel           6 Double           55                                 
+Grosvenor Hotel           7 Double           55 Eileen Reynolds                 
+Grosvenor Hotel           8 Double           55                                 
+Grosvenor Hotel           9 Family           85                                 
+Grosvenor Hotel          10 Family           90                                 
+Grosvenor Hotel          11 Deluxe          110                                 
 
-HOTELNAME           HOTELNO     ROOMNO TYPE          PRICE BOOKED_BY            
----------------- ---------- ---------- -------- ---------- ---------------      
-Grosvenor Hotel           1         12 Deluxe          120                      
-Grosvenor Hotel           1         13 Deluxe          120                      
-Grosvenor Inn             8          1 Double           95 Rick Hamilton        
-Grosvenor Inn             8          2 Double           95                      
-Grosvenor Inn             8          3 Double           95                      
-Grosvenor Inn             8          4 Double           95                      
-Grosvenor Inn             8          5 Double           95                      
-Grosvenor Inn             8          6 Family          125                      
-Grosvenor Inn             8          7 Family          125                      
-Grosvenor Inn             8          8 Family          125                      
-Grosvenor Inn             8          9 Family          125                      
+HOTELNAME            ROOMNO TYPE          PRICE BOOKED_BY                       
+---------------- ---------- -------- ---------- ---------------                 
+Grosvenor Hotel          12 Deluxe          120                                 
+Grosvenor Hotel          13 Deluxe          120                                 
+Grosvenor Inn             1 Double           95 Rick Hamilton                   
+Grosvenor Inn             2 Double           95                                 
+Grosvenor Inn             3 Double           95                                 
+Grosvenor Inn             4 Double           95                                 
+Grosvenor Inn             5 Double           95                                 
+Grosvenor Inn             6 Family          125                                 
+Grosvenor Inn             7 Family          125                                 
+Grosvenor Inn             8 Family          125                                 
+Grosvenor Inn             9 Family          125                                 
 
-HOTELNAME           HOTELNO     ROOMNO TYPE          PRICE BOOKED_BY            
----------------- ---------- ---------- -------- ---------- ---------------      
-Grosvenor Inn             8         10 Family          125                      
-Grosvenor Inn             8         11 Deluxe          155                      
-Grosvenor Inn             8         12 Deluxe          155                      
-Grosvenor Inn             8         13 Deluxe          155                      
-Grosvenor Inn             8         14 Deluxe          155                      
-Grosvenor Inn             8         15 Deluxe          155                      
-Grosvenor Inn             8         16 Single           45                      
-Grosvenor Inn             8         17 Single           45                      
-Grosvenor Inn             8         18 Single           45                      
-Grosvenor Inn             8         19 Single           45                      
-Grosvenor Inn             8         20 Single           45 Sundeep Mohan        
+HOTELNAME            ROOMNO TYPE          PRICE BOOKED_BY                       
+---------------- ---------- -------- ---------- ---------------                 
+Grosvenor Inn            10 Family          125                                 
+Grosvenor Inn            11 Deluxe          155                                 
+Grosvenor Inn            12 Deluxe          155                                 
+Grosvenor Inn            13 Deluxe          155                                 
+Grosvenor Inn            14 Deluxe          155                                 
+Grosvenor Inn            15 Deluxe          155                                 
+Grosvenor Inn            16 Single           45                                 
+Grosvenor Inn            17 Single           45                                 
+Grosvenor Inn            18 Single           45                                 
+Grosvenor Inn            19 Single           45                                 
+Grosvenor Inn            20 Single           45 Sundeep Mohan                   
 
 33 rows selected.
 
@@ -156,245 +160,216 @@ SQL> --List the rooms that are currently unocupied at all 'Grosvenor' hotels
 SQL> --List in hotelNo, roomNo oder
 SQL> --use NOT IN
 SQL> SELECT *
-  2  FROM (
-  3    SELECT h.hotelNo,
-  4  	      h.hotelName,
-  5  	      r.roomNo,
-  6  	      r.type,
-  7  	      r.price,
-  8  	      b.guestNo
-  9    FROM Room r
- 10    INNER JOIN (
- 11  	 SELECT *
- 12  	 FROM Hotel
- 13  	 WHERE hotelName LIKE '%Grosvenor%'
- 14    ) h
- 15  	   ON r.hotelNo = h.hotelNo
- 16    LEFT JOIN (
- 17  	 SELECT *
- 18  	 FROM Booking
- 19  	 WHERE DATE '2016-02-01' BETWEEN dateFrom AND DateTo
- 20    ) b
- 21  	 ON h.hotelNo = b.hotelNo
- 22  	 AND r.roomNo = b.roomNo
- 23  )
- 24  WHERE guestNo NOT IN (
- 25    SELECT guestNo
- 26    FROM Guest
- 27    WHERE guestNo IS NOT NULL
- 28   )
- 29  OR guestNo IS NULL
- 30  ORDER BY hotelNo, roomNo
- 31  ;
+  2  FROM Room r
+  3  WHERE roomNo NOT IN (
+  4    SELECT roomNo
+  5    FROM Booking
+  6    WHERE dateFrom <= DATE'2016-02-01'
+  7  	 AND (dateTo IS NULL OR dateTo >= DATE'2016-02-01')
+  8  )
+  9  AND hotelNo NOT IN (
+ 10    SELECT HotelNo
+ 11    FROM Hotel
+ 12    WHERE hotelName NOT LIKE'%Grosvenor%'
+ 13  )
+ 14  ORDER BY r.hotelNo, r.roomNo
+ 15  ;
 
-   HOTELNO HOTELNAME            ROOMNO TYPE          PRICE    GUESTNO           
----------- ---------------- ---------- -------- ---------- ----------           
-         1 Grosvenor Hotel           1 Single           40                      
-         1 Grosvenor Hotel           2 Single           40                      
-         1 Grosvenor Hotel           6 Double           55                      
-         1 Grosvenor Hotel           7 Double           55                      
-         1 Grosvenor Hotel           8 Double           55                      
-         1 Grosvenor Hotel           9 Family           85                      
-         1 Grosvenor Hotel          10 Family           90                      
-         1 Grosvenor Hotel          11 Deluxe          110                      
-         1 Grosvenor Hotel          12 Deluxe          120                      
-         1 Grosvenor Hotel          13 Deluxe          120                      
-         8 Grosvenor Inn             2 Double           95                      
+   HOTELNO     ROOMNO TYPE          PRICE                                       
+---------- ---------- -------- ----------                                       
+         1          2 Single           40                                       
+         1          6 Double           55                                       
+         1          8 Double           55                                       
+         1          9 Family           85                                       
+         1         11 Deluxe          110                                       
+         1         12 Deluxe          120                                       
+         1         13 Deluxe          120                                       
+         8          2 Double           95                                       
+         8          6 Family          125                                       
+         8          8 Family          125                                       
+         8          9 Family          125                                       
 
-   HOTELNO HOTELNAME            ROOMNO TYPE          PRICE    GUESTNO           
----------- ---------------- ---------- -------- ---------- ----------           
-         8 Grosvenor Inn             3 Double           95                      
-         8 Grosvenor Inn             4 Double           95                      
-         8 Grosvenor Inn             5 Double           95                      
-         8 Grosvenor Inn             6 Family          125                      
-         8 Grosvenor Inn             7 Family          125                      
-         8 Grosvenor Inn             8 Family          125                      
-         8 Grosvenor Inn             9 Family          125                      
-         8 Grosvenor Inn            10 Family          125                      
-         8 Grosvenor Inn            11 Deluxe          155                      
-         8 Grosvenor Inn            12 Deluxe          155                      
-         8 Grosvenor Inn            13 Deluxe          155                      
+   HOTELNO     ROOMNO TYPE          PRICE                                       
+---------- ---------- -------- ----------                                       
+         8         11 Deluxe          155                                       
+         8         12 Deluxe          155                                       
+         8         13 Deluxe          155                                       
+         8         14 Deluxe          155                                       
+         8         15 Deluxe          155                                       
+         8         16 Single           45                                       
+         8         17 Single           45                                       
+         8         18 Single           45                                       
+         8         19 Single           45                                       
 
-   HOTELNO HOTELNAME            ROOMNO TYPE          PRICE    GUESTNO           
----------- ---------------- ---------- -------- ---------- ----------           
-         8 Grosvenor Inn            14 Deluxe          155                      
-         8 Grosvenor Inn            15 Deluxe          155                      
-         8 Grosvenor Inn            16 Single           45                      
-         8 Grosvenor Inn            17 Single           45                      
-         8 Grosvenor Inn            18 Single           45                      
-         8 Grosvenor Inn            19 Single           45                      
-
-28 rows selected.
+20 rows selected.
 
 SQL> --
 SQL> --Q5--------------------------------------------------------
 SQL> --not exists
 SQL> SELECT *
-  2  FROM (
-  3    SELECT h.hotelNo, h.hotelName, r.roomNo, r.type, r.price, b.guestNo
-  4    FROM Room r
-  5    INNER JOIN (
-  6  	 SELECT *
-  7  	 FROM Hotel
-  8  	 WHERE hotelName LIKE '%Grosvenor%'
-  9    ) h
- 10  	 ON r.hotelNo = h.hotelNo
- 11    LEFT JOIN (
- 12  	 SELECT *
- 13  	 FROM Booking
- 14  	 WHERE DATE '2016-02-01' BETWEEN dateFrom AND DateTo
- 15    ) b
- 16  	 ON h.hotelNo = b.hotelNo
- 17  	 AND r.roomNo = b.roomNo
- 18  ) hb
- 19  WHERE NOT EXISTS (
- 20    SELECT *
- 21    FROM Guest g
- 22    WHERE g.guestNo = hb.guestNo
- 23   )
- 24  ORDER BY hotelNo, roomNo
- 25  ;
+  2  FROM Room r
+  3  WHERE NOT EXISTS (
+  4    SELECT *
+  5  	 FROM Booking b
+  6  	 WHERE b.roomNo = r.roomNo
+  7  	  AND dateFrom <= DATE'2016-02-01'
+  8  	  AND (dateTo IS NULL OR dateTo >= DATE'2016-02-01'))
+  9  AND NOT EXISTS (
+ 10    SELECT *
+ 11  	 FROM Hotel h
+ 12  	 WHERE h.hotelNo = r.hotelNo
+ 13  	   AND h.hotelName NOT LIKE'%Grosvenor%')
+ 14  ORDER BY r.hotelNo, r.roomNo
+ 15  ;
 
-   HOTELNO HOTELNAME            ROOMNO TYPE          PRICE    GUESTNO           
----------- ---------------- ---------- -------- ---------- ----------           
-         1 Grosvenor Hotel           1 Single           40                      
-         1 Grosvenor Hotel           2 Single           40                      
-         1 Grosvenor Hotel           6 Double           55                      
-         1 Grosvenor Hotel           7 Double           55                      
-         1 Grosvenor Hotel           8 Double           55                      
-         1 Grosvenor Hotel           9 Family           85                      
-         1 Grosvenor Hotel          10 Family           90                      
-         1 Grosvenor Hotel          11 Deluxe          110                      
-         1 Grosvenor Hotel          12 Deluxe          120                      
-         1 Grosvenor Hotel          13 Deluxe          120                      
-         8 Grosvenor Inn             2 Double           95                      
+   HOTELNO     ROOMNO TYPE          PRICE                                       
+---------- ---------- -------- ----------                                       
+         1          2 Single           40                                       
+         1          6 Double           55                                       
+         1          8 Double           55                                       
+         1          9 Family           85                                       
+         1         11 Deluxe          110                                       
+         1         12 Deluxe          120                                       
+         1         13 Deluxe          120                                       
+         8          2 Double           95                                       
+         8          6 Family          125                                       
+         8          8 Family          125                                       
+         8          9 Family          125                                       
 
-   HOTELNO HOTELNAME            ROOMNO TYPE          PRICE    GUESTNO           
----------- ---------------- ---------- -------- ---------- ----------           
-         8 Grosvenor Inn             3 Double           95                      
-         8 Grosvenor Inn             4 Double           95                      
-         8 Grosvenor Inn             5 Double           95                      
-         8 Grosvenor Inn             6 Family          125                      
-         8 Grosvenor Inn             7 Family          125                      
-         8 Grosvenor Inn             8 Family          125                      
-         8 Grosvenor Inn             9 Family          125                      
-         8 Grosvenor Inn            10 Family          125                      
-         8 Grosvenor Inn            11 Deluxe          155                      
-         8 Grosvenor Inn            12 Deluxe          155                      
-         8 Grosvenor Inn            13 Deluxe          155                      
+   HOTELNO     ROOMNO TYPE          PRICE                                       
+---------- ---------- -------- ----------                                       
+         8         11 Deluxe          155                                       
+         8         12 Deluxe          155                                       
+         8         13 Deluxe          155                                       
+         8         14 Deluxe          155                                       
+         8         15 Deluxe          155                                       
+         8         16 Single           45                                       
+         8         17 Single           45                                       
+         8         18 Single           45                                       
+         8         19 Single           45                                       
 
-   HOTELNO HOTELNAME            ROOMNO TYPE          PRICE    GUESTNO           
----------- ---------------- ---------- -------- ---------- ----------           
-         8 Grosvenor Inn            14 Deluxe          155                      
-         8 Grosvenor Inn            15 Deluxe          155                      
-         8 Grosvenor Inn            16 Single           45                      
-         8 Grosvenor Inn            17 Single           45                      
-         8 Grosvenor Inn            18 Single           45                      
-         8 Grosvenor Inn            19 Single           45                      
-
-28 rows selected.
+20 rows selected.
 
 SQL> --
 SQL> --Q6--------------------------------------------------------
 SQL> --List the rooms that are currently unocupied at all 'Grosvenor' hotels
 SQL> --List in hotelNo, roomNo roder
 SQL> --use LEFT JOIN
-SQL> SELECT h.hotelName,
-  2  	    h.hotelNo,
-  3  	    r.roomNo,
-  4  	    r.type,
-  5  	    r.price
-  6  FROM Room r
-  7  INNER JOIN (
-  8    SELECT *
-  9    FROM Hotel
- 10    WHERE hotelName LIKE '%Grosvenor%'
- 11    ) h
- 12  	 ON r.hotelNo = h.hotelNo
- 13  LEFT JOIN (
- 14    SELECT *
- 15    FROM Booking
- 16    WHERE DATE '2016-02-01' BETWEEN dateFrom AND DateTo
- 17    ) b
- 18  	 ON h.hotelNo = b.hotelNo
- 19  	 AND r.roomNo = b.roomNo
- 20  LEFT JOIN Guest g ON b.guestNo = g.guestNo
- 21  WHERE g.guestNo is NULL
- 22  ORDER BY r.hotelNo, r.roomNo
- 23  ;
+SQL> SELECT h.hotelName, r.roomNo, r.type, r.price
+  2  FROM Room r
+  3    LEFT JOIN Hotel h ON h.hotelNo = r.hotelNo
+  4    LEFT JOIN (
+  5  	 SELECT *
+  6  	 FROM Booking
+  7  	 WHERE dateFrom <= DATE'2016-02-01'
+  8  	 AND (dateTo IS NULL OR dateTo >= DATE'2016-02-01')
+  9    ) b ON b.hotelNo = h.hotelNo
+ 10  			   AND b.roomNo = r.roomNo
+ 11    LEFT JOIN Guest g ON g.guestNo = b.guestNo
+ 12  WHERE g.guestNo is NULL
+ 13  AND h.hotelName LIKE '%Grosvenor%'
+ 14  ORDER BY r.hotelNo, r.roomNo
+ 15  ;
 
-HOTELNAME           HOTELNO     ROOMNO TYPE          PRICE                      
----------------- ---------- ---------- -------- ----------                      
-Grosvenor Hotel           1          1 Single           40                      
-Grosvenor Hotel           1          2 Single           40                      
-Grosvenor Hotel           1          6 Double           55                      
-Grosvenor Hotel           1          7 Double           55                      
-Grosvenor Hotel           1          8 Double           55                      
-Grosvenor Hotel           1          9 Family           85                      
-Grosvenor Hotel           1         10 Family           90                      
-Grosvenor Hotel           1         11 Deluxe          110                      
-Grosvenor Hotel           1         12 Deluxe          120                      
-Grosvenor Hotel           1         13 Deluxe          120                      
-Grosvenor Inn             8          2 Double           95                      
+HOTELNAME            ROOMNO TYPE          PRICE                                 
+---------------- ---------- -------- ----------                                 
+Grosvenor Hotel           1 Single           40                                 
+Grosvenor Hotel           2 Single           40                                 
+Grosvenor Hotel           6 Double           55                                 
+Grosvenor Hotel           8 Double           55                                 
+Grosvenor Hotel           9 Family           85                                 
+Grosvenor Hotel          10 Family           90                                 
+Grosvenor Hotel          11 Deluxe          110                                 
+Grosvenor Hotel          12 Deluxe          120                                 
+Grosvenor Hotel          13 Deluxe          120                                 
+Grosvenor Inn             2 Double           95                                 
+Grosvenor Inn             3 Double           95                                 
 
-HOTELNAME           HOTELNO     ROOMNO TYPE          PRICE                      
----------------- ---------- ---------- -------- ----------                      
-Grosvenor Inn             8          3 Double           95                      
-Grosvenor Inn             8          4 Double           95                      
-Grosvenor Inn             8          5 Double           95                      
-Grosvenor Inn             8          6 Family          125                      
-Grosvenor Inn             8          7 Family          125                      
-Grosvenor Inn             8          8 Family          125                      
-Grosvenor Inn             8          9 Family          125                      
-Grosvenor Inn             8         10 Family          125                      
-Grosvenor Inn             8         11 Deluxe          155                      
-Grosvenor Inn             8         12 Deluxe          155                      
-Grosvenor Inn             8         13 Deluxe          155                      
+HOTELNAME            ROOMNO TYPE          PRICE                                 
+---------------- ---------- -------- ----------                                 
+Grosvenor Inn             4 Double           95                                 
+Grosvenor Inn             5 Double           95                                 
+Grosvenor Inn             6 Family          125                                 
+Grosvenor Inn             7 Family          125                                 
+Grosvenor Inn             8 Family          125                                 
+Grosvenor Inn             9 Family          125                                 
+Grosvenor Inn            10 Family          125                                 
+Grosvenor Inn            11 Deluxe          155                                 
+Grosvenor Inn            12 Deluxe          155                                 
+Grosvenor Inn            13 Deluxe          155                                 
+Grosvenor Inn            14 Deluxe          155                                 
 
-HOTELNAME           HOTELNO     ROOMNO TYPE          PRICE                      
----------------- ---------- ---------- -------- ----------                      
-Grosvenor Inn             8         14 Deluxe          155                      
-Grosvenor Inn             8         15 Deluxe          155                      
-Grosvenor Inn             8         16 Single           45                      
-Grosvenor Inn             8         17 Single           45                      
-Grosvenor Inn             8         18 Single           45                      
-Grosvenor Inn             8         19 Single           45                      
+HOTELNAME            ROOMNO TYPE          PRICE                                 
+---------------- ---------- -------- ----------                                 
+Grosvenor Inn            15 Deluxe          155                                 
+Grosvenor Inn            16 Single           45                                 
+Grosvenor Inn            17 Single           45                                 
+Grosvenor Inn            18 Single           45                                 
+Grosvenor Inn            19 Single           45                                 
 
-28 rows selected.
+27 rows selected.
 
 SQL> --
 SQL> --Q7--------------------------------------------------------
 SQL> --List the rooms that are currently unocupied at all 'Grosvenor' hotels
 SQL> --List in hotelNo, roomNo roder
 SQL> --use MINUS
-SQL> SELECT h.hotelNo,
-  2  	    r.roomNo,
-  3  	    b.guestNo
-  4  FROM Room r
-  5  INNER JOIN (
-  6    SELECT *
-  7    FROM Hotel
-  8    WHERE hotelName LIKE '%Grosvenor%'
-  9  ) h
- 10    ON r.hotelNo = h.hotelNo
- 11  LEFT JOIN (
- 12    SELECT *
- 13    FROM Booking
- 14    WHERE DATE '2016-02-01' BETWEEN dateFrom AND DateTo
- 15  ) b
- 16    ON h.hotelNo = b.hotelNo
- 17    AND r.roomNo = b.roomNo
- 18  MINUS
- 19    SELECT *
- 20    FROM Guest g,
- 21    WHERE b.guestNo = g.guestNo
- 22  ORDER BY h.hotelNo, r.roomNo
- 23  ;
-  WHERE b.guestNo = g.guestNo
-  *
-ERROR at line 21:
-ORA-00903: invalid table name 
+SQL> SELECT r.hotelNo, r.roomNo, r.type, r.price
+  2  FROM Room r, Booking b
+  3  WHERE r.hotelNo = b.hotelNo
+  4  AND b.dateFrom <= DATE'2016-02-01'
+  5  AND (b.dateTo IS NULL OR b.dateTo >= DATE'2016-02-01')
+  6    MINUS (
+  7  	 SELECT r.hotelNo, r.roomNo, r.type, r.price
+  8  	 FROM Room r, Hotel h
+  9  	 WHERE r.hotelNo = h.hotelNo
+ 10  	 AND h.hotelName NOT LIKE '%Grosvenor%'
+ 11    )
+ 12  ;
 
+   HOTELNO     ROOMNO TYPE          PRICE                                       
+---------- ---------- -------- ----------                                       
+         1          1 Single           40                                       
+         1          2 Single           40                                       
+         1          3 Single           40                                       
+         1          4 Single           40                                       
+         1          5 Double           55                                       
+         1          6 Double           55                                       
+         1          7 Double           55                                       
+         1          8 Double           55                                       
+         1          9 Family           85                                       
+         1         10 Family           90                                       
+         1         11 Deluxe          110                                       
+
+   HOTELNO     ROOMNO TYPE          PRICE                                       
+---------- ---------- -------- ----------                                       
+         1         12 Deluxe          120                                       
+         1         13 Deluxe          120                                       
+         8          1 Double           95                                       
+         8          2 Double           95                                       
+         8          3 Double           95                                       
+         8          4 Double           95                                       
+         8          5 Double           95                                       
+         8          6 Family          125                                       
+         8          7 Family          125                                       
+         8          8 Family          125                                       
+         8          9 Family          125                                       
+
+   HOTELNO     ROOMNO TYPE          PRICE                                       
+---------- ---------- -------- ----------                                       
+         8         10 Family          125                                       
+         8         11 Deluxe          155                                       
+         8         12 Deluxe          155                                       
+         8         13 Deluxe          155                                       
+         8         14 Deluxe          155                                       
+         8         15 Deluxe          155                                       
+         8         16 Single           45                                       
+         8         17 Single           45                                       
+         8         18 Single           45                                       
+         8         19 Single           45                                       
+         8         20 Single           45                                       
+
+33 rows selected.
 
 SQL> --
 SQL> --Q8--------------------------------------------------------
@@ -403,7 +378,7 @@ SQL> SELECT AVG(numBookings) AS Average
   2  FROM (
   3    SELECT COUNT(b.guestNo) AS numBookings
   4    FROM Hotel h
-  5    LEFT JOIN Booking b
+  5    JOIN Booking b
   6  	 ON h.hotelNo = b.hotelNo
   7    GROUP BY h.hotelNo
   8  )
@@ -411,7 +386,7 @@ SQL> SELECT AVG(numBookings) AS Average
 
    AVERAGE                                                                      
 ----------                                                                      
-       2.7                                                                      
+     3.375                                                                      
 
 SQL> --
 SQL> --Q9--------------------------------------------------------
@@ -424,52 +399,72 @@ SQL> SELECT r.hotelNo,
   4  FROM Room r
   5  INNER JOIN Hotel h
   6    ON r.hotelNo = h.hotelNo
-  7  INNER JOIN (
+  7  LEFT JOIN (
   8    SELECT *
   9    FROM Booking
  10  	 WHERE dateFrom <= DATE'2016-02-01'
  11  	 AND (dateTo IS NULL OR dateTo >= DATE'2016-02-01')
- 12  ) b
- 13    ON r.hotelNo = b.hotelNo
+ 12  ) b ON r.hotelNo = b.hotelNo
+ 13  	 AND b.roomNo = r.roomNo
  14  GROUP BY r.hotelNo, h.hotelName
  15  ORDER BY hotelNo
  16  ;
 
    HOTELNO HOTELNAME        LOSTINCOME                                          
 ---------- ---------------- ----------                                          
-         1 Grosvenor Hotel        3620                                          
+         1 Grosvenor Hotel         905                                          
          2 Meridian Hotel         1210                                          
          3 Holiday Inn             580                                          
+         4 The Ramada             2600                                          
+         5 Imperial Palace        2070                                          
          6 Park Royal Hotel       1072                                          
-         8 Grosvenor Inn          4200                                          
+         7 Delta Inn               900                                          
+         8 Grosvenor Inn          2100                                          
+
+8 rows selected.
 
 SQL> --
 SQL> --Q10--------------------------------------------------------
 SQL> --Create a view containing the account for each guest at grosenvor hotel
 SQL> --Use 2016-02-01 as date, and guestAccount as view name
 SQL> --
-SQL> CREATE VIEW guestAccount
-  2  AS
-  3  SELECT r.roomNo AS Room,
-  4  	    g.guestName AS Name,
-  5  	    dateFrom AS CheckIn,
-  6  	    dateTo AS CheckOut
-  7  FROM Guest g
-  8  LEFT JOIN Booking b
-  9    ON g.guestNo = b.guestNo
- 10  INNER JOIN (
- 11    SELECT *
- 12    FROM Hotel
- 13    WHERE hotelName LIKE '%Grosvenor Hotel%'
- 14  ) h
- 15    ON b.hotelNo = h.hotelNo
- 16  LEFT JOIN Room r
- 17    ON h.hotelNo = r.hotelNo
- 18  ;
-CREATE VIEW guestAccount
-            *
+SQL> CREATE VIEW guestAccount AS
+  2  SELECT r.roomNo AS Room,
+  3  	    g.guestName AS Name,
+  4  	    dateFrom AS CheckIn,
+  5  	    dateTo AS CheckOut
+  6  FROM Guest g
+  7  INNER JOIN (
+  8    SELECT *
+  9    FROM Booking b
+ 10    INNER JOIN (
+ 11  	 SELECT hotelName
+ 12  	 FROM Hotel
+ 13  	 WHERE hotelName LIKE '%Grosvenor Hotel%'
+ 14    )  ON hotelNo = b.hotelNo
+ 15  ) bh ON bh.hotelNo = h.hotelNo
+ 16  LEFT JOIN Room r ON h.hotelNo = r.hotelNo
+ 17  ;
+) bh ON bh.hotelNo = h.hotelNo
+                     *
+ERROR at line 15:
+ORA-00904: "H"."HOTELNO": invalid identifier 
+
+
+SQL> SELECT *
+  2  FROM guestAccount
+  3  ;
+FROM guestAccount
+     *
+ERROR at line 2:
+ORA-00942: table or view does not exist 
+
+
+SQL> DROP VIEW guestAccount;
+DROP VIEW guestAccount
+*
 ERROR at line 1:
-ORA-00955: name is already used by an existing object 
+ORA-00942: table or view does not exist 
 
 
 SQL> --
